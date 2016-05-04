@@ -3,14 +3,14 @@
 //    This sample is implemented as a console-style application and simply prints
 //    status messages a connection is made and when data is sent to the server.
 //
-#include "tcpClient.h"
+#include "udpClient.h"
 
-SOCKET sClient;
+SOCKET SendClient;
 
 void initSocket()
 {
-	sClient = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
-	if (sClient == INVALID_SOCKET)
+	SendClient = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+	if (SendClient == INVALID_SOCKET)
 	{
 		WSACleanup();
 		printf("socket() for sClient failed!\n");
@@ -19,28 +19,14 @@ void initSocket()
 	return;
 }
 
-void connectToSever(SOCKADDR_IN* ServerAddr)
-{
-	printf("We are trying to connect to %s:%d...\n", inet_ntoa(ServerAddr->sin_addr), htons(ServerAddr->sin_port));
-	if (connect(sClient, (SOCKADDR *)ServerAddr, sizeof(*ServerAddr)) == SOCKET_ERROR)
-	{
-		printf("connect failed with error %d\n", WSAGetLastError());
-		closesocket(sClient);
-		WSACleanup();
-		return;
-	}
-	printf("Our connection succeeded.\n");
-	return;
-}
-
-void sendToServer(const char* str)
+void sendToServer(SOCKADDR_IN* server, const char* str)
 {
 	int Ret;
 	printf("Server will now try to send a message to client.\n");
-	if ((Ret = send(sClient, str, strlen(str) + 1, 0)) == SOCKET_ERROR)
+	if ((Ret = sendto(SendClient, str, strlen(str) + 1, 0, (SOCKADDR *)server, sizeof(*server))) == SOCKET_ERROR)
 	{
 		printf("send failed with error %d\n", WSAGetLastError());
-		closesocket(sClient);
+		closesocket(SendClient);
 		WSACleanup();
 		return;
 	}
@@ -48,12 +34,13 @@ void sendToServer(const char* str)
 	return;
 }
 
-void recvFromClient(SOCKET* s)
+void recvFromClient(SOCKET* s, SOCKADDR_IN* client)
 {
 	int Ret;
+	int len = sizeof(*client);
 	char DataBuffer[1024];
 	printf("Server will now try to receive a message from client.\n");
-	if ((Ret = recv(*s, DataBuffer, sizeof(DataBuffer), 0)) == SOCKET_ERROR)
+	if ((Ret = recvfrom(*s, DataBuffer, sizeof(DataBuffer), 0, (SOCKADDR *)client, &len)) == SOCKET_ERROR)
 	{
 		printf("recv failed with error %d\n", WSAGetLastError());
 		closesocket(*s);
@@ -65,11 +52,11 @@ void recvFromClient(SOCKET* s)
 }
 
 
-void sendToClient(SOCKET* s, const char* str)
+void sendToClient(SOCKET* s, SOCKADDR_IN* client, const char* str)
 {
 	int Ret;
 	printf("Client will now try to send a message to server.\n");
-	if ((Ret = send(*s, str, strlen(str) + 1, 0)) == SOCKET_ERROR)
+	if ((Ret = sendto(*s, str, strlen(str) + 1, 0, (SOCKADDR *)client, sizeof(*client))) == SOCKET_ERROR)
 	{
 		printf("send failed with error %d\n", WSAGetLastError());
 		closesocket(*s);
@@ -80,15 +67,16 @@ void sendToClient(SOCKET* s, const char* str)
 	return;
 }
 
-void recvFromServer()
+void recvFromServer(SOCKADDR_IN* server)
 {
 	int Ret;
+	int len = sizeof(*server);
 	char DataBuffer[1024];
 	printf("Client will now try to receive a message from server.\n");
-	if ((Ret = recv(sClient, DataBuffer, sizeof(DataBuffer), 0)) == SOCKET_ERROR)
+	if ((Ret = recvfrom(SendClient, DataBuffer, sizeof(DataBuffer), 0, (SOCKADDR *)server, &len)) == SOCKET_ERROR)
 	{
 		printf("recv failed with error %d\n", WSAGetLastError());
-		closesocket(sClient);
+		closesocket(SendClient);
 		WSACleanup();
 		return;
 	}

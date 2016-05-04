@@ -1,7 +1,7 @@
 #pragma once
 #if !defined TCPSERVER_H
 #define TCPSERVER_H
-#include "tcpClient.h"
+#include "udpClient.h"
 
 void runServer();
 
